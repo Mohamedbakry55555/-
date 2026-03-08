@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Elbakry Difference Checker - Mobile Ready</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/diff_match_patch/20121119/diff_match_patch.js"></script>
+
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+    
+    <style>
+        /* ═══════════════════════════════════════════════════════════════
+           CSS VARIABLES & THEME (Elbakry Edition)
+           ═══════════════════════════════════════════════════════════════ */
+        :root {
+            --font-sans: 'Cairo', system-ui, -apple-system, sans-serif;
+            --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+            --radius-sm: 8px; 
+            --radius: 12px;
+            --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #0b0f19;      
+            --bg-secondary: #151a28;    
+            --bg-tertiary: #1e2538;     
+            --border: #2a3441; 
+            --text-primary: #f0f6fc; 
+            --text-secondary: #919bb1; 
+            --accent: #3b82f6;          
+            --accent-hover: #60a5fa;
+            --del-bg: rgba(248, 81, 73, 0.15); 
+            --del-text: #ff7b72;
+            --add-bg: rgba(46, 160, 67, 0.15); 
+            --add-text: #3fb950;
+            --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        [data-theme="light"] {
+            --bg-primary: #f8fafc; 
+            --bg-secondary: #ffffff; 
+            --bg-tertiary: #f1f5f9;
+            --border: #e2e8f0; 
+            --text-primary: #0f172a; 
+            --text-secondary: #64748b; 
+            --accent: #2563eb; 
+            --accent-hover: #3b82f6;
+            --del-bg: rgba(239, 68, 68, 0.15); 
+            --del-text: #ef4444;
+            --add-bg: rgba(34, 197, 94, 0.15); 
+            --add-text: #22c55e;
+            --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: var(--font-sans); background: var(--bg-primary); color: var(--text-primary); display: flex; flex-direction: column; height: 100vh; overflow: hidden; transition: background 0.3s, color 0.3s;}
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-primary); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+        /* ═══════════════════════════════════════════════════════════════
+           TOOLBAR & SUMMARY
+           ═══════════════════════════════════════════════════════════════ */
+        #toolbar { background: var(--bg-secondary); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; z-index: 10; box-shadow: var(--shadow-sm); flex-shrink: 0; flex-wrap: wrap; gap: 12px;}
+        .logo { font-weight: 700; font-size: 1.4rem; display: flex; align-items: center; gap: 12px; color: var(--text-primary);}
+        .logo-icon { width: 36px; height: 36px; background: linear-gradient(135deg, #3b82f6, #8b5cf6); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1.2rem; box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3); flex-shrink: 0;}
+        
+        .actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end;}
+        .btn { padding: 8px 14px; border: 1px solid var(--border); background: var(--bg-secondary); color: var(--text-primary); border-radius: var(--radius-sm); cursor: pointer; font-weight: 600; font-family: inherit; font-size: 0.9rem; transition: var(--transition); display: flex; align-items: center; gap: 6px; white-space: nowrap;}
+        .btn:hover { background: var(--bg-tertiary); border-color: var(--text-secondary); }
+        .btn-primary { background: var(--accent); color: white; border-color: var(--accent); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25); }
+        
+        #summary-bar { display: flex; gap: 16px; padding: 10px 24px; background: var(--bg-secondary); border-bottom: 1px solid var(--border); font-size: 0.9rem; flex-shrink: 0; flex-wrap: wrap; justify-content: center;}
+        .stat { display: flex; gap: 6px; color: var(--text-secondary); font-weight: 600; align-items: center;}
+        .stat-added span { color: var(--add-text); background: var(--add-bg); padding: 2px 8px; border-radius: 12px; font-size: 0.85rem;}
+        .stat-removed span { color: var(--del-text); background: var(--del-bg); padding: 2px 8px; border-radius: 12px; font-size: 0.85rem;}
+
+        /* ═══════════════════════════════════════════════════════════════
+           WORKSPACE & EDITORS & RESIZER
+           ═══════════════════════════════════════════════════════════════ */
+        #main-workspace { display: flex; flex-direction: column; flex: 1; overflow: hidden; padding: 16px; gap: 12px; background: var(--bg-primary);}
+        
+        #editors-container { display: flex; height: 35vh; min-height: 45px; gap: 16px; flex-shrink: 0; }
+        .editor-box { flex: 1; display: flex; flex-direction: column; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); overflow: hidden; transition: border-color 0.3s;}
+        .editor-box:focus-within { border-color: var(--accent); }
+        
+        .editor-header { padding: 8px 12px; background: rgba(0,0,0,0.02); border-bottom: 1px solid var(--border); font-weight: 700; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; height: 40px; flex-shrink: 0;}
+        .editor-textarea { flex: 1; width: 100%; resize: none; border: none; padding: 12px; background: transparent; color: var(--text-primary); font-family: var(--font-sans); font-size: 1rem; outline: none; line-height: 1.6; overflow-y: auto;}
+
+        /* شريط السحب والتكبير (The Resizer) - Touch Friendly */
+        #resizer { height: 24px; display: flex; align-items: center; justify-content: center; cursor: ns-resize; margin: 0; border-radius: 4px; transition: background 0.2s; z-index: 5; flex-shrink: 0; touch-action: none;}
+        .resizer-handle { width: 60px; height: 4px; background: var(--border); border-radius: 2px; transition: background 0.2s, height 0.2s;}
+        #resizer:hover .resizer-handle, #resizer.active .resizer-handle { background: var(--accent); height: 6px; }
+
+        /* ═══════════════════════════════════════════════════════════════
+           DIFF VIEWER (The Pure Fluid UI)
+           ═══════════════════════════════════════════════════════════════ */
+        #diff-wrapper { flex: 1; display: flex; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); overflow: hidden; position: relative; min-height: 100px;}
+        #empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-secondary); font-size: 1rem; gap: 12px; text-align: center; padding: 20px;}
+        #empty-state svg { width: 40px; height: 40px; opacity: 0.3; }
+        
+        #diff-viewer { flex: 1; display: none; overflow-y: auto; padding: 12px; gap: 12px; }
+        .diff-col { flex: 1; background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 16px; white-space: pre-wrap; word-break: break-word; line-height: 2; font-size: 1rem; overflow-y: auto; color: var(--text-primary);}
+        
+        #inline-viewer { flex: 1; display: none; overflow-y: auto; padding: 16px; }
+        .inline-box { max-width: 1200px; margin: 0 auto; background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 20px; white-space: pre-wrap; word-break: break-word; line-height: 2; font-size: 1rem; }
+
+        .hl-del { background-color: var(--del-bg); color: var(--del-text); text-decoration: line-through; border-radius: 4px; padding: 2px 4px; font-weight: 700; margin: 0 1px;}
+        .hl-add { background-color: var(--add-bg); color: var(--add-text); border-radius: 4px; padding: 2px 4px; font-weight: 700; margin: 0 1px;}
+        .dummy { opacity: 0; user-select: none; pointer-events: none; }
+
+        /* ═══════════════════════════════════════════════════════════════
+           MOBILE RESPONSIVENESS (Media Queries)
+           ═══════════════════════════════════════════════════════════════ */
+        @media (max-width: 768px) {
+            #toolbar { padding: 12px; flex-direction: column; align-items: stretch; gap: 16px; }
+            .logo { justify-content: center; font-size: 1.2rem; }
+            .actions { justify-content: center; }
+            .btn { font-size: 0.8rem; padding: 6px 10px; }
+            
+            #editors-container { flex-direction: column; height: 45vh; }
+            .editor-box { border-left: 1px solid var(--border); border-top: 1px solid var(--border); }
+            
+            /* Hide the Side-by-Side button text on mobile to save space */
+            #view-btn span { display: none; }
+            
+            /* Make diff viewer columns scrollable horizontally if forced to side-by-side */
+            #diff-viewer { flex-wrap: nowrap; overflow-x: auto; padding: 8px; gap: 8px;}
+            .diff-col { min-width: 85vw; padding: 12px;}
+            .inline-box { padding: 12px; font-size: 0.95rem;}
+        }
+    </style>
+</head>
+
+<body>
+    <div id="toolbar">
+        <div class="logo">
+            <div class="logo-icon">EB</div>
+            Elbakry Difference Checker
+        </div>
+        <div class="actions">
+            <button class="btn" onclick="toggleTheme()" title="تغيير المظهر">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+            </button>
+            <button class="btn" onclick="clearEditors()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                <span class="btn-text">مسح</span>
+            </button>
+            <button class="btn" onclick="toggleView()" id="view-btn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="12" x2="21" y2="12"></line></svg>
+                <span>الوضع المدمج (Inline)</span>
+            </button>
+            <button class="btn btn-primary" onclick="runComparison()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                <span class="btn-text">قارن النصوص</span>
+            </button>
+        </div>
+    </div>
+
+    <div id="summary-bar">
+        <div class="stat stat-added">مضاف: <span id="stat-added">0</span></div>
+        <div class="stat stat-removed">محذوف: <span id="stat-removed">0</span></div>
+    </div>
+
+    <div id="main-workspace">
+        <div id="editors-container">
+            <div class="editor-box">
+                <div class="editor-header">
+                    <span>📝 النص الأصلي (Original)</span>
+                </div>
+                <textarea class="editor-textarea" id="original" placeholder="قم بلصق النص الأصلي هنا..."></textarea>
+            </div>
+            <div class="editor-box">
+                <div class="editor-header">
+                    <span>✨ النص المعدل (Modified)</span>
+                </div>
+                <textarea class="editor-textarea" id="modified" placeholder="قم بلصق النص بعد التعديل هنا..."></textarea>
+            </div>
+        </div>
+
+        <div id="resizer" title="اسحب لتغيير حجم المربعات، أو اضغط مرتين للطي">
+            <div class="resizer-handle"></div>
+        </div>
+
+        <div id="diff-wrapper">
+            <div id="empty-state">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12h6m-3-3v6m-7 4h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                <span>أدخل النصوص في الأعلى واضغط على "قارن النصوص".</span>
+            </div>
+            
+            <div id="diff-viewer">
+                <div class="diff-col" id="out-left" onscroll="syncScroll(this, 'out-right')"></div>
+                <div class="diff-col" id="out-right" onscroll="syncScroll(this, 'out-left')"></div>
+            </div>
+
+            <div id="inline-viewer">
+                <div class="inline-box" id="out-inline"></div>
+            </div>
+        </div>
+    </div>
+
+    <script id="diff-worker-script" type="application/javascript-worker">
+        self.onmessage = function(e) {
+            const { text1, text2 } = e.data;
+            if (typeof diff_match_patch === "undefined") return;
+            
+            const dmp = new diff_match_patch();
+            const lineArray = [];  
+            const lineHash = {};   
+            lineArray[0] = ''; 
+
+            function tokenizeToChars(text) {
+                let chars = '';
+                const tokens = text.match(/([a-zA-Z0-9_\u0600-\u06FF]+|\s+|[^\sa-zA-Z0-9_\u0600-\u06FF]+)/g) || [];
+                for (let i = 0; i < tokens.length; i++) {
+                    let token = tokens[i];
+                    if (lineHash.hasOwnProperty(token)) {
+                        chars += String.fromCharCode(lineHash[token]);
+                    } else {
+                        let len = lineArray.length;
+                        chars += String.fromCharCode(len);
+                        lineHash[token] = len;
+                        lineArray[len] = token;
+                    }
+                }
+                return chars;
+            }
+
+            const chars1 = tokenizeToChars(text1);
+            const chars2 = tokenizeToChars(text2);
+            const diffs = dmp.diff_main(chars1, chars2, false);
+            
+            dmp.diff_charsToLines_(diffs, lineArray);
+            dmp.diff_cleanupSemantic(diffs);
+
+            let stats = { added: 0, removed: 0 };
+            diffs.forEach(([op, text]) => {
+                const wordCount = (text.match(/[\w\u0600-\u06FF]+/g) || []).length;
+                if(op === 1) stats.added += wordCount;
+                if(op === -1) stats.removed += wordCount;
+            });
+
+            self.postMessage({ diffs, stats });
+        };
+    </script>
+
+    <script>
+        const $ = id => document.getElementById(id);
+        let currentMode = 'split'; 
+        const isMobile = window.innerWidth <= 768;
+
+        // Auto-switch to inline view on mobile load
+        if(isMobile) {
+            currentMode = 'inline';
+            $('view-btn').innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="3" x2="12" y2="21"></line></svg> <span>الوضع المزدوج</span>';
+        }
+
+        // Worker Init
+        const dmpSrc = 'https://cdnjs.cloudflare.com/ajax/libs/diff_match_patch/20121119/diff_match_patch.js';
+        let diffWorker;
+        try {
+            const workerScript = $('diff-worker-script').textContent;
+            const blobCode = `importScripts('${dmpSrc}');\n${workerScript}`;
+            diffWorker = new Worker(URL.createObjectURL(new Blob([blobCode], { type: 'application/javascript' })));
+        } catch(e) { console.error("Worker Error", e); }
+
+        function toggleTheme() {
+            const root = document.documentElement;
+            root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+        }
+
+        function clearEditors() {
+            $('original').value = ''; $('modified').value = '';
+            $('diff-viewer').style.display = 'none';
+            $('inline-viewer').style.display = 'none';
+            $('empty-state').style.display = 'flex';
+            $('stat-added').textContent = '0'; $('stat-removed').textContent = '0';
+        }
+
+        function toggleView() {
+            if(currentMode === 'split') {
+                currentMode = 'inline';
+                $('view-btn').innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="3" x2="12" y2="21"></line></svg> <span>الوضع المزدوج</span>';
+                if($('diff-viewer').style.display === 'flex') {
+                    $('diff-viewer').style.display = 'none';
+                    $('inline-viewer').style.display = 'block';
+                }
+            } else {
+                currentMode = 'split';
+                $('view-btn').innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="12" x2="21" y2="12"></line></svg> <span>الوضع المدمج</span>';
+                if($('inline-viewer').style.display === 'block') {
+                    $('inline-viewer').style.display = 'none';
+                    $('diff-viewer').style.display = 'flex';
+                }
+            }
+        }
+
+        let isSyncing = false;
+        function syncScroll(source, targetId) {
+            if(isSyncing || window.innerWidth <= 768) return; // تعطيل التزامن على الموبايل لأنه Scrolling أفقي مش رأسي
+            isSyncing = true;
+            const target = $(targetId);
+            const ratio = source.scrollTop / (source.scrollHeight - source.clientHeight || 1);
+            target.scrollTop = ratio * (target.scrollHeight - target.clientHeight || 1);
+            requestAnimationFrame(() => isSyncing = false);
+        }
+
+        function escapeHtml(text) {
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
+        function runComparison() {
+            const text1 = $('original').value;
+            const text2 = $('modified').value;
+            if(!text1 && !text2) return;
+            
+            // طي مربعات النصوص تلقائياً في الموبايل لتوفير مساحة للنتيجة
+            if(window.innerWidth <= 768) {
+                $('editors-container').style.height = '40px';
+            }
+
+            $('empty-state').style.display = 'none';
+            if(currentMode === 'split') $('diff-viewer').style.display = 'flex';
+            else $('inline-viewer').style.display = 'block';
+
+            $('out-left').innerHTML = '<div style="text-align:center; color:var(--text-secondary); margin-top: 20px;">جاري المقارنة...</div>';
+            $('out-right').innerHTML = '';
+            $('out-inline').innerHTML = '<div style="text-align:center; color:var(--text-secondary); margin-top: 20px;">جاري المقارنة...</div>';
+
+            diffWorker.postMessage({ text1, text2 });
+            diffWorker.onmessage = function(e) {
+                const { diffs, stats } = e.data;
+                
+                $('stat-added').textContent = stats.added;
+                $('stat-removed').textContent = stats.removed;
+
+                let leftHtml = '';
+                let rightHtml = '';
+                let inlineHtml = '';
+
+                diffs.forEach(([op, text]) => {
+                    const safeText = escapeHtml(text);
+                    if (op === 0) {
+                        leftHtml += safeText;
+                        rightHtml += safeText;
+                        inlineHtml += safeText;
+                    } else if (op === -1) {
+                        const delMark = `<span class="hl-del">${safeText}</span>`;
+                        const dummyMark = `<span class="dummy">${safeText}</span>`;
+                        leftHtml += delMark;
+                        rightHtml += dummyMark; 
+                        inlineHtml += delMark;
+                    } else if (op === 1) {
+                        const addMark = `<span class="hl-add">${safeText}</span>`;
+                        const dummyMark = `<span class="dummy">${safeText}</span>`;
+                        leftHtml += dummyMark; 
+                        rightHtml += addMark;
+                        inlineHtml += addMark;
+                    }
+                });
+
+                $('out-left').innerHTML = leftHtml;
+                $('out-right').innerHTML = rightHtml;
+                $('out-inline').innerHTML = inlineHtml;
+            };
+        }
+
+        /* ═══════════════════════════════════════════════════════════════
+           RESIZER LOGIC (TOUCH & MOUSE SUPPORTED)
+           ═══════════════════════════════════════════════════════════════ */
+        const resizer = $('resizer');
+        const editorsContainer = $('editors-container');
+        const workspace = $('main-workspace');
+        let isResizing = false;
+        let startY, startHeight;
+
+        function startResize(clientY) {
+            isResizing = true;
+            startY = clientY;
+            startHeight = editorsContainer.offsetHeight;
+            resizer.classList.add('active');
+            document.body.style.userSelect = 'none';
+        }
+
+        function moveResize(clientY) {
+            if (!isResizing) return;
+            let newHeight = startHeight + (clientY - startY);
+            if (newHeight < 40) newHeight = 40; 
+            if (newHeight > workspace.offsetHeight - 100) newHeight = workspace.offsetHeight - 100; 
+            editorsContainer.style.height = newHeight + 'px';
+        }
+
+        function endResize() {
+            if (isResizing) {
+                isResizing = false;
+                resizer.classList.remove('active');
+                document.body.style.userSelect = 'auto';
+            }
+        }
+
+        // Mouse Events
+        resizer.addEventListener('mousedown', e => startResize(e.clientY));
+        document.addEventListener('mousemove', e => moveResize(e.clientY));
+        document.addEventListener('mouseup', endResize);
+
+        // Touch Events (Mobile)
+        resizer.addEventListener('touchstart', e => {
+            startResize(e.touches[0].clientY);
+            // منع الـ Scroll الطبيعي بتاع الموبايل وانت بتسحب
+            e.preventDefault(); 
+        }, {passive: false});
+        document.addEventListener('touchmove', e => {
+            if(isResizing) { moveResize(e.touches[0].clientY); e.preventDefault(); }
+        }, {passive: false});
+        document.addEventListener('touchend', endResize);
+
+        // Double click / Double Tap to collapse
+        let lastTap = 0;
+        resizer.addEventListener('touchend', function(e) {
+            const currentTime = new Date().getTime();
+            const tapLength = currentTime - lastTap;
+            if (tapLength < 500 && tapLength > 0) {
+                toggleCollapse();
+                e.preventDefault();
+            }
+            lastTap = currentTime;
+        });
+        
+        resizer.addEventListener('dblclick', toggleCollapse);
+
+        function toggleCollapse() {
+            if (editorsContainer.offsetHeight > 50) {
+                editorsContainer.dataset.lastHeight = editorsContainer.offsetHeight;
+                editorsContainer.style.height = '40px'; 
+            } else {
+                editorsContainer.style.height = (editorsContainer.dataset.lastHeight || '35vh') + (editorsContainer.dataset.lastHeight ? 'px' : '');
+            }
+        }
+
+    </script>
+</body>
+</html>
