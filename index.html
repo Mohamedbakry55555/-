@@ -1,453 +1,998 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl" data-theme="dark">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Elbakry Difference Checker - Mobile Ready</title>
-    
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Elbakry Difference Checker — Live</title>
+<style>
+    :root {
+      --font-sans: "Segoe UI", Tahoma, Arial, system-ui, -apple-system, sans-serif;
+      --font-mono: Consolas, "Courier New", ui-monospace, monospace;
+      --radius: 14px;
+      --radius-sm: 10px;
+      --ease: .18s ease;
+      --editor-pad: 16px;
+      --editor-font: 16px;
+      --editor-line: 1.85;
+    }
+    [data-theme="dark"] {
+      --bg: #090d16;
+      --panel: #111827;
+      --panel-2: #172033;
+      --panel-3: #1d293d;
+      --border: #2b3950;
+      --text: #eff6ff;
+      --muted: #93a4bd;
+      --accent: #4f8cff;
+      --accent-soft: rgba(79, 140, 255, .16);
+      --add: #57d68d;
+      --add-bg: rgba(46, 204, 113, .20);
+      --del: #ff7d85;
+      --del-bg: rgba(255, 82, 93, .20);
+      --ignored: #b9a8ff;
+      --ignored-bg: rgba(153, 123, 255, .12);
+      --shadow: 0 16px 40px rgba(0,0,0,.24);
+    }
+    [data-theme="light"] {
+      --bg: #f3f6fb;
+      --panel: #ffffff;
+      --panel-2: #f8fafc;
+      --panel-3: #eef3f9;
+      --border: #d8e0eb;
+      --text: #132033;
+      --muted: #67768a;
+      --accent: #2563eb;
+      --accent-soft: rgba(37,99,235,.10);
+      --add: #128448;
+      --add-bg: rgba(34,197,94,.16);
+      --del: #d93b49;
+      --del-bg: rgba(239,68,68,.14);
+      --ignored: #7253cc;
+      --ignored-bg: rgba(114,83,204,.08);
+      --shadow: 0 12px 32px rgba(15,23,42,.08);
+    }
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/diff_match_patch/20121119/diff_match_patch.js"></script>
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      overflow: hidden;
+      transition: background var(--ease), color var(--ease);
+    }
+    button, input, textarea { font: inherit; }
+    button { -webkit-tap-highlight-color: transparent; }
 
-    <script>
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    </script>
-    
-    <style>
-        /* ═══════════════════════════════════════════════════════════════
-           CSS VARIABLES & THEME (Elbakry Edition)
-           ═══════════════════════════════════════════════════════════════ */
-        :root {
-            --font-sans: 'Cairo', system-ui, -apple-system, sans-serif;
-            --font-mono: 'JetBrains Mono', 'Courier New', monospace;
-            --radius-sm: 8px; 
-            --radius: 12px;
-            --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
+    .app {
+      height: 100dvh;
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      min-height: 0;
+    }
 
-        [data-theme="dark"] {
-            --bg-primary: #0b0f19;      
-            --bg-secondary: #151a28;    
-            --bg-tertiary: #1e2538;     
-            --border: #2a3441; 
-            --text-primary: #f0f6fc; 
-            --text-secondary: #919bb1; 
-            --accent: #3b82f6;          
-            --accent-hover: #60a5fa;
-            --del-bg: rgba(248, 81, 73, 0.15); 
-            --del-text: #ff7b72;
-            --add-bg: rgba(46, 160, 67, 0.15); 
-            --add-text: #3fb950;
-            --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        }
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 18px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      box-shadow: 0 4px 18px rgba(0,0,0,.08);
+      z-index: 20;
+    }
+    .brand { display:flex; align-items:center; gap:10px; min-width:0; }
+    .brand-mark {
+      width: 38px; height: 38px; border-radius: 11px;
+      display:grid; place-items:center;
+      color:#fff; font-weight:800; letter-spacing:-.5px;
+      background: linear-gradient(135deg,#2f6dff,#7c52ff);
+      box-shadow: 0 8px 22px rgba(67,97,238,.25);
+      flex: 0 0 auto;
+    }
+    .brand-title { font-weight:700; line-height:1.1; white-space:nowrap; }
+    .brand-sub { color:var(--muted); font-size:.72rem; font-weight:500; margin-top:3px; }
+    .toolbar-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
 
-        [data-theme="light"] {
-            --bg-primary: #f8fafc; 
-            --bg-secondary: #ffffff; 
-            --bg-tertiary: #f1f5f9;
-            --border: #e2e8f0; 
-            --text-primary: #0f172a; 
-            --text-secondary: #64748b; 
-            --accent: #2563eb; 
-            --accent-hover: #3b82f6;
-            --del-bg: rgba(239, 68, 68, 0.15); 
-            --del-text: #ef4444;
-            --add-bg: rgba(34, 197, 94, 0.15); 
-            --add-text: #22c55e;
-            --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-        }
+    .btn {
+      border:1px solid var(--border);
+      background:var(--panel-2);
+      color:var(--text);
+      border-radius:10px;
+      padding:8px 11px;
+      cursor:pointer;
+      font-weight:650;
+      display:inline-flex;
+      align-items:center;
+      gap:7px;
+      transition: background var(--ease), border-color var(--ease), transform var(--ease);
+      min-height:38px;
+    }
+    .btn:hover { background:var(--panel-3); border-color:color-mix(in srgb, var(--border) 55%, var(--accent)); }
+    .btn:active { transform:translateY(1px); }
+    .btn.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+    .btn.ghost { background:transparent; }
+    .btn.danger { color:var(--del); }
+    .btn svg { width:16px; height:16px; flex:0 0 auto; }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: var(--font-sans); background: var(--bg-primary); color: var(--text-primary); display: flex; flex-direction: column; height: 100vh; overflow: hidden; transition: background 0.3s, color 0.3s;}
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: var(--bg-primary); }
-        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    .statusbar {
+      display:flex;
+      align-items:center;
+      gap:12px;
+      padding:9px 18px;
+      background:var(--panel);
+      border-bottom:1px solid var(--border);
+      overflow-x:auto;
+      scrollbar-width:none;
+      min-height:48px;
+    }
+    .statusbar::-webkit-scrollbar { display:none; }
+    .pill {
+      display:inline-flex; align-items:center; gap:6px;
+      padding:5px 9px; border-radius:999px;
+      background:var(--panel-2); border:1px solid var(--border);
+      color:var(--muted); font-size:.82rem; white-space:nowrap;
+    }
+    .pill strong { color:var(--text); font-weight:700; }
+    .pill.add strong { color:var(--add); }
+    .pill.del strong { color:var(--del); }
+    .pill.live { color:var(--add); background:var(--add-bg); border-color:transparent; }
+    .pill.waiting { color:var(--muted); }
+    .pill.error { color:var(--del); background:var(--del-bg); border-color:transparent; }
 
-        /* ═══════════════════════════════════════════════════════════════
-           TOOLBAR & SUMMARY
-           ═══════════════════════════════════════════════════════════════ */
-        #toolbar { background: var(--bg-secondary); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; z-index: 10; box-shadow: var(--shadow-sm); flex-shrink: 0; flex-wrap: wrap; gap: 12px;}
-        .logo { font-weight: 700; font-size: 1.4rem; display: flex; align-items: center; gap: 12px; color: var(--text-primary);}
-        .logo-icon { width: 36px; height: 36px; background: linear-gradient(135deg, #3b82f6, #8b5cf6); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1.2rem; box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3); flex-shrink: 0;}
-        
-        .actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end;}
-        .btn { padding: 8px 14px; border: 1px solid var(--border); background: var(--bg-secondary); color: var(--text-primary); border-radius: var(--radius-sm); cursor: pointer; font-weight: 600; font-family: inherit; font-size: 0.9rem; transition: var(--transition); display: flex; align-items: center; gap: 6px; white-space: nowrap;}
-        .btn:hover { background: var(--bg-tertiary); border-color: var(--text-secondary); }
-        .btn-primary { background: var(--accent); color: white; border-color: var(--accent); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25); }
-        
-        #summary-bar { display: flex; gap: 16px; padding: 10px 24px; background: var(--bg-secondary); border-bottom: 1px solid var(--border); font-size: 0.9rem; flex-shrink: 0; flex-wrap: wrap; justify-content: center;}
-        .stat { display: flex; gap: 6px; color: var(--text-secondary); font-weight: 600; align-items: center;}
-        .stat-added span { color: var(--add-text); background: var(--add-bg); padding: 2px 8px; border-radius: 12px; font-size: 0.85rem;}
-        .stat-removed span { color: var(--del-text); background: var(--del-bg); padding: 2px 8px; border-radius: 12px; font-size: 0.85rem;}
+    .ignore-strip {
+      margin-inline-start:auto;
+      display:flex; align-items:center; gap:6px;
+      min-width:max-content;
+    }
+    .ignore-label { color:var(--muted); font-size:.8rem; font-weight:600; }
+    #ignore-chips { display:flex; gap:5px; align-items:center; }
+    .ignore-chip {
+      border:1px solid color-mix(in srgb, var(--ignored) 40%, var(--border));
+      background:var(--ignored-bg); color:var(--ignored);
+      border-radius:999px; padding:4px 8px; cursor:pointer;
+      display:inline-flex; align-items:center; gap:6px;
+      font-family:var(--font-mono); font-size:.76rem;
+      max-width:170px;
+    }
+    .ignore-chip span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .ignore-chip b { font-family:var(--font-sans); opacity:.7; font-weight:700; }
 
-        /* ═══════════════════════════════════════════════════════════════
-           WORKSPACE & EDITORS & RESIZER
-           ═══════════════════════════════════════════════════════════════ */
-        #main-workspace { display: flex; flex-direction: column; flex: 1; overflow: hidden; padding: 16px; gap: 12px; background: var(--bg-primary);}
-        
-        #editors-container { display: flex; height: 35vh; min-height: 45px; gap: 16px; flex-shrink: 0; }
-        .editor-box { flex: 1; display: flex; flex-direction: column; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); overflow: hidden; transition: border-color 0.3s;}
-        .editor-box:focus-within { border-color: var(--accent); }
-        
-        .editor-header { padding: 8px 12px; background: rgba(0,0,0,0.02); border-bottom: 1px solid var(--border); font-weight: 700; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; height: 40px; flex-shrink: 0;}
-        .editor-textarea { flex: 1; width: 100%; resize: none; border: none; padding: 12px; background: transparent; color: var(--text-primary); font-family: var(--font-sans); font-size: 1rem; outline: none; line-height: 1.6; overflow-y: auto;}
+    .workspace {
+      min-height:0;
+      padding:14px;
+      display:grid;
+      grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+      gap:14px;
+    }
+    .editor-card {
+      min-width:0;
+      min-height:0;
+      display:grid;
+      grid-template-rows:auto 1fr;
+      background:var(--panel);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      overflow:hidden;
+      box-shadow:var(--shadow);
+    }
+    .editor-card:focus-within { border-color:color-mix(in srgb, var(--accent) 78%, var(--border)); box-shadow:0 0 0 3px var(--accent-soft), var(--shadow); }
+    .editor-head {
+      display:flex; align-items:center; justify-content:space-between; gap:8px;
+      padding:10px 12px;
+      border-bottom:1px solid var(--border);
+      background:var(--panel-2);
+      min-height:48px;
+    }
+    .editor-title { display:flex; align-items:center; gap:8px; min-width:0; }
+    .editor-title strong { font-size:.92rem; white-space:nowrap; }
+    .editor-title small { color:var(--muted); font-size:.72rem; }
+    .editor-tools { display:flex; align-items:center; gap:6px; }
+    .mini-btn {
+      border:1px solid var(--border); background:var(--panel); color:var(--muted);
+      border-radius:8px; padding:6px 8px; cursor:pointer; font-size:.75rem; font-weight:650;
+    }
+    .mini-btn:hover { color:var(--text); border-color:var(--accent); }
 
-        /* شريط السحب والتكبير (The Resizer) - Touch Friendly */
-        #resizer { height: 24px; display: flex; align-items: center; justify-content: center; cursor: ns-resize; margin: 0; border-radius: 4px; transition: background 0.2s; z-index: 5; flex-shrink: 0; touch-action: none;}
-        .resizer-handle { width: 60px; height: 4px; background: var(--border); border-radius: 2px; transition: background 0.2s, height 0.2s;}
-        #resizer:hover .resizer-handle, #resizer.active .resizer-handle { background: var(--accent); height: 6px; }
+    .editor-surface { position:relative; min-height:0; overflow:hidden; background:var(--panel); }
+    .editor-layer {
+      position:absolute; inset:0;
+      margin:0; width:100%; height:100%;
+      padding:var(--editor-pad);
+      border:0; outline:0; resize:none;
+      font-family:var(--font-sans);
+      font-size:var(--editor-font);
+      font-weight:400;
+      line-height:var(--editor-line);
+      letter-spacing:normal;
+      tab-size:4;
+      white-space:pre-wrap;
+      overflow-wrap:anywhere;
+      word-break:break-word;
+      text-align:start;
+      unicode-bidi:plaintext;
+      scrollbar-gutter:stable;
+    }
+    .highlight-layer {
+      z-index:1;
+      overflow:auto;
+      color:var(--text);
+      pointer-events:none;
+      background:var(--panel);
+    }
+    .highlight-layer::-webkit-scrollbar { width:8px; height:8px; }
+    .highlight-layer::-webkit-scrollbar-thumb, .highlight-layer::-webkit-scrollbar-track { background:transparent; }
+    .text-editor {
+      z-index:2;
+      overflow:auto;
+      background:transparent;
+      color:transparent;
+      caret-color:var(--text);
+      -webkit-text-fill-color:transparent;
+      accent-color:var(--accent);
+    }
+    .text-editor::placeholder { color:var(--muted); -webkit-text-fill-color:var(--muted); opacity:.78; }
+    .text-editor::selection { background:color-mix(in srgb, var(--accent) 38%, transparent); }
+    .text-editor::-moz-selection { background:rgba(79,140,255,.34); }
+    .text-editor::-webkit-scrollbar { width:8px; height:8px; }
+    .text-editor::-webkit-scrollbar-thumb { background:var(--border); border-radius:99px; }
+    .text-editor::-webkit-scrollbar-track { background:transparent; }
 
-        /* ═══════════════════════════════════════════════════════════════
-           DIFF VIEWER (The Pure Fluid UI)
-           ═══════════════════════════════════════════════════════════════ */
-        #diff-wrapper { flex: 1; display: flex; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); overflow: hidden; position: relative; min-height: 100px;}
-        #empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-secondary); font-size: 1rem; gap: 12px; text-align: center; padding: 20px;}
-        #empty-state svg { width: 40px; height: 40px; opacity: 0.3; }
-        
-        #diff-viewer { flex: 1; display: none; overflow-y: auto; padding: 12px; gap: 12px; }
-        .diff-col { flex: 1; background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 16px; white-space: pre-wrap; word-break: break-word; line-height: 2; font-size: 1rem; overflow-y: auto; color: var(--text-primary);}
-        
-        #inline-viewer { flex: 1; display: none; overflow-y: auto; padding: 16px; }
-        .inline-box { max-width: 1200px; margin: 0 auto; background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 20px; white-space: pre-wrap; word-break: break-word; line-height: 2; font-size: 1rem; }
+    .diff-del { background:var(--del-bg); color:var(--del); border-radius:3px; box-decoration-break:clone; -webkit-box-decoration-break:clone; }
+    .diff-add { background:var(--add-bg); color:var(--add); border-radius:3px; box-decoration-break:clone; -webkit-box-decoration-break:clone; }
+    .ignored-char { color:inherit; }
 
-        .hl-del { background-color: var(--del-bg); color: var(--del-text); text-decoration: line-through; border-radius: 4px; padding: 2px 4px; font-weight: 700; margin: 0 1px;}
-        .hl-add { background-color: var(--add-bg); color: var(--add-text); border-radius: 4px; padding: 2px 4px; font-weight: 700; margin: 0 1px;}
-        .dummy { opacity: 0; user-select: none; pointer-events: none; }
+    .empty-hint {
+      position:absolute; inset:auto 12px 10px 12px; z-index:3;
+      pointer-events:none; color:var(--muted); font-size:.72rem; text-align:start;
+      opacity:.8;
+    }
 
-        /* ═══════════════════════════════════════════════════════════════
-           MOBILE RESPONSIVENESS (Media Queries)
-           ═══════════════════════════════════════════════════════════════ */
-        @media (max-width: 768px) {
-            #toolbar { padding: 12px; flex-direction: column; align-items: stretch; gap: 16px; }
-            .logo { justify-content: center; font-size: 1.2rem; }
-            .actions { justify-content: center; }
-            .btn { font-size: 0.8rem; padding: 6px 10px; }
-            
-            #editors-container { flex-direction: column; height: 45vh; }
-            .editor-box { border-left: 1px solid var(--border); border-top: 1px solid var(--border); }
-            
-            /* Hide the Side-by-Side button text on mobile to save space */
-            #view-btn span { display: none; }
-            
-            /* Make diff viewer columns scrollable horizontally if forced to side-by-side */
-            #diff-viewer { flex-wrap: nowrap; overflow-x: auto; padding: 8px; gap: 8px;}
-            .diff-col { min-width: 85vw; padding: 12px;}
-            .inline-box { padding: 12px; font-size: 0.95rem;}
-        }
-    </style>
+    .switch {
+      position:relative; width:44px; height:24px; flex:0 0 auto;
+    }
+    .switch input { position:absolute; opacity:0; pointer-events:none; }
+    .switch-track {
+      position:absolute; inset:0; border-radius:999px; background:var(--border); cursor:pointer; transition:background var(--ease);
+    }
+    .switch-track::after {
+      content:""; position:absolute; width:18px; height:18px; top:3px; right:3px;
+      border-radius:50%; background:#fff; transition:transform var(--ease); box-shadow:0 2px 6px rgba(0,0,0,.22);
+    }
+    .switch input:checked + .switch-track { background:var(--accent); }
+    .switch input:checked + .switch-track::after { transform:translateX(-20px); }
+    .live-control { display:flex; align-items:center; gap:7px; padding-inline:2px 5px; color:var(--muted); font-size:.78rem; font-weight:650; }
+
+    .toast {
+      position:fixed; left:50%; bottom:18px; transform:translate(-50%, 18px);
+      background:var(--panel-3); color:var(--text); border:1px solid var(--border);
+      border-radius:10px; padding:9px 12px; box-shadow:var(--shadow);
+      opacity:0; pointer-events:none; transition:opacity .18s, transform .18s; z-index:100;
+      font-size:.84rem; max-width:min(90vw,620px); text-align:center;
+    }
+    .toast.show { opacity:1; transform:translate(-50%,0); }
+
+    @media (max-width: 860px) {
+      body { overflow:auto; }
+      .app { min-height:100dvh; height:auto; grid-template-rows:auto auto auto; }
+      .toolbar { align-items:flex-start; flex-direction:column; }
+      .toolbar-actions { width:100%; justify-content:flex-start; }
+      .statusbar { padding-inline:12px; }
+      .workspace { grid-template-columns:1fr; grid-template-rows:minmax(48vh,1fr) minmax(48vh,1fr); min-height:calc(100dvh - 160px); }
+      .editor-card { min-height:48vh; }
+      .brand-sub { display:none; }
+    }
+
+    @media (max-width: 520px) {
+      .toolbar { padding:10px 12px; }
+      .toolbar-actions { gap:6px; }
+      .btn { padding:7px 9px; min-height:36px; font-size:.78rem; }
+      .btn .btn-label.optional { display:none; }
+      .workspace { padding:8px; gap:8px; }
+      :root { --editor-pad: 13px; --editor-font: 15px; --editor-line:1.75; }
+      .editor-title small { display:none; }
+      .mini-btn { padding:5px 7px; }
+    }
+  </style>
 </head>
-
 <body>
-    <div id="toolbar">
-        <div class="logo">
-            <div class="logo-icon">EB</div>
-            Elbakry Difference Checker
+  <main class="app">
+    <header class="toolbar">
+      <div class="brand">
+        <div class="brand-mark">EB</div>
+        <div>
+          <div class="brand-title">Elbakry Difference Checker</div>
+          <div class="brand-sub">Live compare داخل نفس مربعي الكتابة</div>
         </div>
-        <div class="actions">
-            <button class="btn" onclick="toggleTheme()" title="تغيير المظهر">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
-            </button>
-            <button class="btn" onclick="clearEditors()">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                <span class="btn-text">مسح</span>
-            </button>
-            <button class="btn" onclick="toggleView()" id="view-btn">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="12" x2="21" y2="12"></line></svg>
-                <span>الوضع المدمج (Inline)</span>
-            </button>
-            <button class="btn btn-primary" onclick="runComparison()">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                <span class="btn-text">قارن النصوص</span>
-            </button>
+      </div>
+
+      <div class="toolbar-actions">
+        <label class="live-control" title="عند تفعيله تتحدث المقارنة تلقائياً أثناء الكتابة">
+          <span>Live</span>
+          <span class="switch">
+            <input id="live-toggle" type="checkbox" checked>
+            <span class="switch-track"></span>
+          </span>
+        </label>
+
+        <button class="btn" id="ignore-selection-btn" type="button" title="حدد حرفاً أو أكثر داخل أي مربع ثم اضغط هنا">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M12 3v18"/><path d="M5 5l14 14"/></svg>
+          <span class="btn-label">تجاهل المحدد</span>
+        </button>
+
+        <button class="btn" id="compare-btn" type="button" title="تحديث المقارنة الآن">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h11M4 17h16M15 7l-3-3m3 3l-3 3M9 17l3-3m-3 3l3 3"/></svg>
+          <span class="btn-label optional">تحديث</span>
+        </button>
+
+        <button class="btn" id="theme-btn" type="button" title="تغيير المظهر">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        </button>
+
+        <button class="btn ghost danger" id="clear-btn" type="button" title="مسح النصين">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M7 6l1 14h8l1-14"/></svg>
+          <span class="btn-label optional">مسح</span>
+        </button>
+      </div>
+    </header>
+
+    <section class="statusbar" aria-live="polite">
+      <div class="pill live" id="engine-status">● Live جاهز</div>
+      <div class="pill add">مضاف <strong id="added-stat">0</strong></div>
+      <div class="pill del">محذوف <strong id="removed-stat">0</strong></div>
+      <div class="pill">تغييرات <strong id="changes-stat">0</strong></div>
+      <div class="pill">تشابه <strong id="similarity-stat">100%</strong></div>
+
+      <div class="ignore-strip">
+        <span class="ignore-label">المتجاهَل:</span>
+        <div id="ignore-chips"></div>
+        <button class="mini-btn" id="clear-ignore-btn" type="button" hidden>إلغاء الكل</button>
+      </div>
+    </section>
+
+    <section class="workspace">
+      <article class="editor-card" data-side="original">
+        <div class="editor-head">
+          <div class="editor-title">
+            <strong>النص الأصلي</strong>
+            <small>Original</small>
+          </div>
+          <div class="editor-tools">
+            <button class="mini-btn ignore-here" type="button">تجاهل المحدد</button>
+          </div>
         </div>
-    </div>
-
-    <div id="summary-bar">
-        <div class="stat stat-added">مضاف: <span id="stat-added">0</span></div>
-        <div class="stat stat-removed">محذوف: <span id="stat-removed">0</span></div>
-    </div>
-
-    <div id="main-workspace">
-        <div id="editors-container">
-            <div class="editor-box">
-                <div class="editor-header">
-                    <span>📝 النص الأصلي (Original)</span>
-                </div>
-                <textarea class="editor-textarea" id="original" placeholder="قم بلصق النص الأصلي هنا..."></textarea>
-            </div>
-            <div class="editor-box">
-                <div class="editor-header">
-                    <span>✨ النص المعدل (Modified)</span>
-                </div>
-                <textarea class="editor-textarea" id="modified" placeholder="قم بلصق النص بعد التعديل هنا..."></textarea>
-            </div>
+        <div class="editor-surface">
+          <pre class="editor-layer highlight-layer" id="original-highlight" dir="auto" aria-hidden="true"></pre>
+          <textarea class="editor-layer text-editor" id="original" dir="auto" wrap="soft" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="الصق النص الأصلي هنا..."></textarea>
+          <div class="empty-hint">حدد أي حرف مزعج واضغط «تجاهل المحدد» ليُتجاهل في النصين بالكامل.</div>
         </div>
+      </article>
 
-        <div id="resizer" title="اسحب لتغيير حجم المربعات، أو اضغط مرتين للطي">
-            <div class="resizer-handle"></div>
+      <article class="editor-card" data-side="modified">
+        <div class="editor-head">
+          <div class="editor-title">
+            <strong>النص المعدل</strong>
+            <small>Modified</small>
+          </div>
+          <div class="editor-tools">
+            <button class="mini-btn ignore-here" type="button">تجاهل المحدد</button>
+          </div>
         </div>
-
-        <div id="diff-wrapper">
-            <div id="empty-state">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12h6m-3-3v6m-7 4h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                <span>أدخل النصوص في الأعلى واضغط على "قارن النصوص".</span>
-            </div>
-            
-            <div id="diff-viewer">
-                <div class="diff-col" id="out-left" onscroll="syncScroll(this, 'out-right')"></div>
-                <div class="diff-col" id="out-right" onscroll="syncScroll(this, 'out-left')"></div>
-            </div>
-
-            <div id="inline-viewer">
-                <div class="inline-box" id="out-inline"></div>
-            </div>
+        <div class="editor-surface">
+          <pre class="editor-layer highlight-layer" id="modified-highlight" dir="auto" aria-hidden="true"></pre>
+          <textarea class="editor-layer text-editor" id="modified" dir="auto" wrap="soft" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="الصق النص المعدل هنا..."></textarea>
+          <div class="empty-hint">الأخضر = مضاف، الأحمر = محذوف. يمكنك التعديل مباشرة والنتيجة تتحدث لحظياً.</div>
         </div>
-    </div>
+      </article>
+    </section>
+  </main>
 
-    <script id="diff-worker-script" type="application/javascript-worker">
-        self.onmessage = function(e) {
-            const { text1, text2 } = e.data;
-            if (typeof diff_match_patch === "undefined") return;
-            
-            const dmp = new diff_match_patch();
-            const lineArray = [];  
-            const lineHash = {};   
-            lineArray[0] = ''; 
+  <div class="toast" id="toast" role="status"></div>
 
-            function tokenizeToChars(text) {
-                let chars = '';
-                const tokens = text.match(/([a-zA-Z0-9_\u0600-\u06FF]+|\s+|[^\sa-zA-Z0-9_\u0600-\u06FF]+)/g) || [];
-                for (let i = 0; i < tokens.length; i++) {
-                    let token = tokens[i];
-                    if (lineHash.hasOwnProperty(token)) {
-                        chars += String.fromCharCode(lineHash[token]);
-                    } else {
-                        let len = lineArray.length;
-                        chars += String.fromCharCode(len);
-                        lineHash[token] = len;
-                        lineArray[len] = token;
-                    }
-                }
-                return chars;
+  <script id="worker-source" type="text/plain">
+    // Self-contained token diff engine. No CDN/network dependency.
+    function isIgnoredUnit(ch, ignored) {
+      return ignored.has(ch);
+    }
+
+    function buildFiltered(text, ignored) {
+      let filtered = '';
+      const map = [];
+      for (let i = 0; i < text.length;) {
+        const cp = text.codePointAt(i);
+        const ch = String.fromCodePoint(cp);
+        const unitLength = ch.length;
+        if (!isIgnoredUnit(ch, ignored)) {
+          filtered += ch;
+          for (let j = 0; j < unitLength; j++) map.push(i + j);
+        }
+        i += unitLength;
+      }
+      return { filtered, map };
+    }
+
+    function tokenize(text) {
+      const tokens = [];
+      const re = /[\p{L}\p{N}_]+|\s+|[^\s\p{L}\p{N}_]+/gu;
+      let m;
+      while ((m = re.exec(text)) !== null) {
+        tokens.push({ value: m[0], start: m.index, end: m.index + m[0].length });
+      }
+      return tokens;
+    }
+
+    function getV(map, key) {
+      const value = map.get(key);
+      return value === undefined ? -1e15 : value;
+    }
+
+    function myersTokenDiff(a, b, deadlineMs, maxD) {
+      const N = a.length;
+      const M = b.length;
+      if (!N && !M) return [];
+      if (!N) return b.map((_, bi) => ({ op: 1, bi }));
+      if (!M) return a.map((_, ai) => ({ op: -1, ai }));
+
+      let prefix = 0;
+      while (prefix < N && prefix < M && a[prefix].value === b[prefix].value) prefix++;
+
+      let suffix = 0;
+      while (suffix < N - prefix && suffix < M - prefix &&
+             a[N - 1 - suffix].value === b[M - 1 - suffix].value) suffix++;
+
+      const aStart = prefix;
+      const bStart = prefix;
+      const aEnd = N - suffix;
+      const bEnd = M - suffix;
+      const A = a.slice(aStart, aEnd);
+      const B = b.slice(bStart, bEnd);
+
+      const head = [];
+      for (let i = 0; i < prefix; i++) head.push({ op: 0, ai: i, bi: i });
+      const tail = [];
+      for (let i = 0; i < suffix; i++) {
+        tail.push({ op: 0, ai: N - suffix + i, bi: M - suffix + i });
+      }
+
+      if (!A.length) {
+        const middle = B.map((_, i) => ({ op: 1, bi: bStart + i }));
+        return head.concat(middle, tail);
+      }
+      if (!B.length) {
+        const middle = A.map((_, i) => ({ op: -1, ai: aStart + i }));
+        return head.concat(middle, tail);
+      }
+
+      const n = A.length, m = B.length;
+      const max = n + m;
+      const limit = Math.min(max, maxD);
+      let v = new Map();
+      v.set(1, 0);
+      const trace = [];
+      let solved = false;
+
+      outer:
+      for (let d = 0; d <= limit; d++) {
+        if ((d & 31) === 0 && performance.now() > deadlineMs) break;
+        const next = new Map();
+        for (let k = -d; k <= d; k += 2) {
+          let x;
+          if (k === -d || (k !== d && getV(v, k - 1) < getV(v, k + 1))) {
+            x = Math.max(0, getV(v, k + 1));
+          } else {
+            x = Math.max(0, getV(v, k - 1) + 1);
+          }
+          let y = x - k;
+          while (x < n && y < m && y >= 0 && A[x].value === B[y].value) {
+            x++; y++;
+          }
+          next.set(k, x);
+          if (x >= n && y >= m) {
+            trace.push(next);
+            solved = true;
+            break outer;
+          }
+        }
+        trace.push(next);
+        v = next;
+      }
+
+      if (!solved) return null;
+
+      let x = n, y = m;
+      const reversed = [];
+      for (let d = trace.length - 1; d > 0; d--) {
+        const prev = trace[d - 1];
+        const k = x - y;
+        let prevK;
+        if (k === -d || (k !== d && getV(prev, k - 1) < getV(prev, k + 1))) prevK = k + 1;
+        else prevK = k - 1;
+
+        let prevX = getV(prev, prevK);
+        if (prevX < 0) prevX = 0;
+        let prevY = prevX - prevK;
+
+        while (x > prevX && y > prevY) {
+          reversed.push({ op: 0, ai: aStart + x - 1, bi: bStart + y - 1 });
+          x--; y--;
+        }
+
+        if (x === prevX) {
+          if (y > 0) {
+            reversed.push({ op: 1, bi: bStart + y - 1 });
+            y--;
+          }
+        } else if (x > 0) {
+          reversed.push({ op: -1, ai: aStart + x - 1 });
+          x--;
+        }
+      }
+
+      while (x > 0 && y > 0) {
+        reversed.push({ op: 0, ai: aStart + x - 1, bi: bStart + y - 1 });
+        x--; y--;
+      }
+      while (x > 0) { reversed.push({ op: -1, ai: aStart + x - 1 }); x--; }
+      while (y > 0) { reversed.push({ op: 1, bi: bStart + y - 1 }); y--; }
+
+      reversed.reverse();
+      return head.concat(reversed, tail);
+    }
+
+    function markToken(status, token, filteredMap, mark) {
+      for (let i = token.start; i < token.end; i++) {
+        const originalIndex = filteredMap[i];
+        if (originalIndex !== undefined) status[originalIndex] = mark;
+      }
+    }
+
+    function isWordToken(token) {
+      return /[\p{L}\p{N}_]/u.test(token.value);
+    }
+
+    function fallbackAllChanged(tokens1, tokens2) {
+      const ops = [];
+      for (let ai = 0; ai < tokens1.length; ai++) ops.push({ op: -1, ai });
+      for (let bi = 0; bi < tokens2.length; bi++) ops.push({ op: 1, bi });
+      return ops;
+    }
+
+    self.onmessage = function(event) {
+      const { id, text1, text2, ignoredChars } = event.data;
+      try {
+        const ignored = new Set(ignoredChars || []);
+        const a = buildFiltered(text1, ignored);
+        const b = buildFiltered(text2, ignored);
+        const tokens1 = tokenize(a.filtered);
+        const tokens2 = tokenize(b.filtered);
+
+        const totalTokens = tokens1.length + tokens2.length;
+        const maxD = totalTokens > 50000 ? 800 : totalTokens > 18000 ? 1400 : 2600;
+        const budget = totalTokens > 50000 ? 500 : totalTokens > 18000 ? 700 : 950;
+        const deadline = performance.now() + budget;
+
+        let ops = myersTokenDiff(tokens1, tokens2, deadline, maxD);
+        let coarse = false;
+        if (!ops) {
+          coarse = true;
+          ops = fallbackAllChanged(tokens1, tokens2);
+        }
+
+        const status1 = new Uint8Array(text1.length);
+        const status2 = new Uint8Array(text2.length);
+        let addedWords = 0, removedWords = 0, changes = 0;
+        let equalChars = 0;
+        let inChange = false;
+
+        for (const item of ops) {
+          if (item.op === 0) {
+            const t = tokens1[item.ai];
+            if (t) equalChars += t.end - t.start;
+            inChange = false;
+          } else if (item.op === -1) {
+            const t = tokens1[item.ai];
+            if (t) {
+              markToken(status1, t, a.map, 1);
+              if (isWordToken(t)) removedWords++;
             }
-
-            const chars1 = tokenizeToChars(text1);
-            const chars2 = tokenizeToChars(text2);
-            const diffs = dmp.diff_main(chars1, chars2, false);
-            
-            dmp.diff_charsToLines_(diffs, lineArray);
-            dmp.diff_cleanupSemantic(diffs);
-
-            let stats = { added: 0, removed: 0 };
-            diffs.forEach(([op, text]) => {
-                const wordCount = (text.match(/[\w\u0600-\u06FF]+/g) || []).length;
-                if(op === 1) stats.added += wordCount;
-                if(op === -1) stats.removed += wordCount;
-            });
-
-            self.postMessage({ diffs, stats });
-        };
-    </script>
-
-    <script>
-        const $ = id => document.getElementById(id);
-        let currentMode = 'split'; 
-        const isMobile = window.innerWidth <= 768;
-
-        // Auto-switch to inline view on mobile load
-        if(isMobile) {
-            currentMode = 'inline';
-            $('view-btn').innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="3" x2="12" y2="21"></line></svg> <span>الوضع المزدوج</span>';
-        }
-
-        // Worker Init
-        const dmpSrc = 'https://cdnjs.cloudflare.com/ajax/libs/diff_match_patch/20121119/diff_match_patch.js';
-        let diffWorker;
-        try {
-            const workerScript = $('diff-worker-script').textContent;
-            const blobCode = `importScripts('${dmpSrc}');\n${workerScript}`;
-            diffWorker = new Worker(URL.createObjectURL(new Blob([blobCode], { type: 'application/javascript' })));
-        } catch(e) { console.error("Worker Error", e); }
-
-        function toggleTheme() {
-            const root = document.documentElement;
-            root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
-        }
-
-        function clearEditors() {
-            $('original').value = ''; $('modified').value = '';
-            $('diff-viewer').style.display = 'none';
-            $('inline-viewer').style.display = 'none';
-            $('empty-state').style.display = 'flex';
-            $('stat-added').textContent = '0'; $('stat-removed').textContent = '0';
-        }
-
-        function toggleView() {
-            if(currentMode === 'split') {
-                currentMode = 'inline';
-                $('view-btn').innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="3" x2="12" y2="21"></line></svg> <span>الوضع المزدوج</span>';
-                if($('diff-viewer').style.display === 'flex') {
-                    $('diff-viewer').style.display = 'none';
-                    $('inline-viewer').style.display = 'block';
-                }
-            } else {
-                currentMode = 'split';
-                $('view-btn').innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="12" x2="21" y2="12"></line></svg> <span>الوضع المدمج</span>';
-                if($('inline-viewer').style.display === 'block') {
-                    $('inline-viewer').style.display = 'none';
-                    $('diff-viewer').style.display = 'flex';
-                }
+            if (!inChange) { changes++; inChange = true; }
+          } else if (item.op === 1) {
+            const t = tokens2[item.bi];
+            if (t) {
+              markToken(status2, t, b.map, 2);
+              if (isWordToken(t)) addedWords++;
             }
+            if (!inChange) { changes++; inChange = true; }
+          }
         }
 
-        let isSyncing = false;
-        function syncScroll(source, targetId) {
-            if(isSyncing || window.innerWidth <= 768) return; // تعطيل التزامن على الموبايل لأنه Scrolling أفقي مش رأسي
-            isSyncing = true;
-            const target = $(targetId);
-            const ratio = source.scrollTop / (source.scrollHeight - source.clientHeight || 1);
-            target.scrollTop = ratio * (target.scrollHeight - target.clientHeight || 1);
-            requestAnimationFrame(() => isSyncing = false);
-        }
+        const base = Math.max(a.filtered.length, b.filtered.length, 1);
+        const similarity = Math.max(0, Math.min(100, Math.round((equalChars / base) * 1000) / 10));
 
-        function escapeHtml(text) {
-            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-        }
-
-        function runComparison() {
-            const text1 = $('original').value;
-            const text2 = $('modified').value;
-            if(!text1 && !text2) return;
-            
-            // طي مربعات النصوص تلقائياً في الموبايل لتوفير مساحة للنتيجة
-            if(window.innerWidth <= 768) {
-                $('editors-container').style.height = '40px';
-            }
-
-            $('empty-state').style.display = 'none';
-            if(currentMode === 'split') $('diff-viewer').style.display = 'flex';
-            else $('inline-viewer').style.display = 'block';
-
-            $('out-left').innerHTML = '<div style="text-align:center; color:var(--text-secondary); margin-top: 20px;">جاري المقارنة...</div>';
-            $('out-right').innerHTML = '';
-            $('out-inline').innerHTML = '<div style="text-align:center; color:var(--text-secondary); margin-top: 20px;">جاري المقارنة...</div>';
-
-            diffWorker.postMessage({ text1, text2 });
-            diffWorker.onmessage = function(e) {
-                const { diffs, stats } = e.data;
-                
-                $('stat-added').textContent = stats.added;
-                $('stat-removed').textContent = stats.removed;
-
-                let leftHtml = '';
-                let rightHtml = '';
-                let inlineHtml = '';
-
-                diffs.forEach(([op, text]) => {
-                    const safeText = escapeHtml(text);
-                    if (op === 0) {
-                        leftHtml += safeText;
-                        rightHtml += safeText;
-                        inlineHtml += safeText;
-                    } else if (op === -1) {
-                        const delMark = `<span class="hl-del">${safeText}</span>`;
-                        const dummyMark = `<span class="dummy">${safeText}</span>`;
-                        leftHtml += delMark;
-                        rightHtml += dummyMark; 
-                        inlineHtml += delMark;
-                    } else if (op === 1) {
-                        const addMark = `<span class="hl-add">${safeText}</span>`;
-                        const dummyMark = `<span class="dummy">${safeText}</span>`;
-                        leftHtml += dummyMark; 
-                        rightHtml += addMark;
-                        inlineHtml += addMark;
-                    }
-                });
-
-                $('out-left').innerHTML = leftHtml;
-                $('out-right').innerHTML = rightHtml;
-                $('out-inline').innerHTML = inlineHtml;
-            };
-        }
-
-        /* ═══════════════════════════════════════════════════════════════
-           RESIZER LOGIC (TOUCH & MOUSE SUPPORTED)
-           ═══════════════════════════════════════════════════════════════ */
-        const resizer = $('resizer');
-        const editorsContainer = $('editors-container');
-        const workspace = $('main-workspace');
-        let isResizing = false;
-        let startY, startHeight;
-
-        function startResize(clientY) {
-            isResizing = true;
-            startY = clientY;
-            startHeight = editorsContainer.offsetHeight;
-            resizer.classList.add('active');
-            document.body.style.userSelect = 'none';
-        }
-
-        function moveResize(clientY) {
-            if (!isResizing) return;
-            let newHeight = startHeight + (clientY - startY);
-            if (newHeight < 40) newHeight = 40; 
-            if (newHeight > workspace.offsetHeight - 100) newHeight = workspace.offsetHeight - 100; 
-            editorsContainer.style.height = newHeight + 'px';
-        }
-
-        function endResize() {
-            if (isResizing) {
-                isResizing = false;
-                resizer.classList.remove('active');
-                document.body.style.userSelect = 'auto';
-            }
-        }
-
-        // Mouse Events
-        resizer.addEventListener('mousedown', e => startResize(e.clientY));
-        document.addEventListener('mousemove', e => moveResize(e.clientY));
-        document.addEventListener('mouseup', endResize);
-
-        // Touch Events (Mobile)
-        resizer.addEventListener('touchstart', e => {
-            startResize(e.touches[0].clientY);
-            // منع الـ Scroll الطبيعي بتاع الموبايل وانت بتسحب
-            e.preventDefault(); 
-        }, {passive: false});
-        document.addEventListener('touchmove', e => {
-            if(isResizing) { moveResize(e.touches[0].clientY); e.preventDefault(); }
-        }, {passive: false});
-        document.addEventListener('touchend', endResize);
-
-        // Double click / Double Tap to collapse
-        let lastTap = 0;
-        resizer.addEventListener('touchend', function(e) {
-            const currentTime = new Date().getTime();
-            const tapLength = currentTime - lastTap;
-            if (tapLength < 500 && tapLength > 0) {
-                toggleCollapse();
-                e.preventDefault();
-            }
-            lastTap = currentTime;
+        self.postMessage({
+          id,
+          status1: Array.from(status1),
+          status2: Array.from(status2),
+          stats: { addedWords, removedWords, changes, similarity, coarse }
         });
-        
-        resizer.addEventListener('dblclick', toggleCollapse);
+      } catch (error) {
+        self.postMessage({ id, error: error && error.message ? error.message : String(error) });
+      }
+    };
+  </script>
 
-        function toggleCollapse() {
-            if (editorsContainer.offsetHeight > 50) {
-                editorsContainer.dataset.lastHeight = editorsContainer.offsetHeight;
-                editorsContainer.style.height = '40px'; 
-            } else {
-                editorsContainer.style.height = (editorsContainer.dataset.lastHeight || '35vh') + (editorsContainer.dataset.lastHeight ? 'px' : '');
+  <script>
+    (() => {
+      'use strict';
+
+      const $ = id => document.getElementById(id);
+      const original = $('original');
+      const modified = $('modified');
+      const originalHighlight = $('original-highlight');
+      const modifiedHighlight = $('modified-highlight');
+      const liveToggle = $('live-toggle');
+      const engineStatus = $('engine-status');
+      const toast = $('toast');
+
+      let lastFocusedEditor = original;
+      let compareTimer = null;
+      let worker = null;
+      let workerHealthy = false;
+      let requestId = 0;
+      let latestAppliedId = 0;
+      let syncLock = false;
+      let toastTimer = null;
+
+      const ignoredChars = new Set(loadIgnoredChars());
+
+      function loadIgnoredChars() {
+        try {
+          const raw = localStorage.getItem('elbakry-diff-ignored-v2');
+          const arr = raw ? JSON.parse(raw) : [];
+          return Array.isArray(arr) ? arr.filter(x => typeof x === 'string' && x.length > 0) : [];
+        } catch (_) { return []; }
+      }
+
+      function saveIgnoredChars() {
+        try { localStorage.setItem('elbakry-diff-ignored-v2', JSON.stringify(Array.from(ignoredChars))); }
+        catch (_) {}
+      }
+
+      function showToast(message) {
+        clearTimeout(toastTimer);
+        toast.textContent = message;
+        toast.classList.add('show');
+        toastTimer = setTimeout(() => toast.classList.remove('show'), 2300);
+      }
+
+      function escapeHtml(text) {
+        return text
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      function renderMarkedText(text, status, side) {
+        if (!text) return '';
+        const changedClass = side === 'original' ? 'diff-del' : 'diff-add';
+        const changedCode = side === 'original' ? 1 : 2;
+        let html = '';
+        let runText = '';
+        let runChanged = false;
+
+        const flush = () => {
+          if (!runText) return;
+          const safe = escapeHtml(runText);
+          html += runChanged ? `<mark class="${changedClass}">${safe}</mark>` : safe;
+          runText = '';
+        };
+
+        for (let i = 0; i < text.length; i++) {
+          const isChanged = status && status[i] === changedCode;
+          if (runText && isChanged !== runChanged) flush();
+          runChanged = isChanged;
+          runText += text[i];
+        }
+        flush();
+
+        // A trailing newline is visually collapsed by <pre>; preserve its height.
+        if (text.endsWith('\n')) html += '\n';
+        return html;
+      }
+
+      function renderNeutral(editor, highlight) {
+        highlight.textContent = editor.value;
+        syncBackdrop(editor, highlight);
+      }
+
+      function setStatus(kind, text) {
+        engineStatus.className = `pill ${kind}`;
+        engineStatus.textContent = text;
+      }
+
+      function updateStats(stats = {}) {
+        $('added-stat').textContent = stats.addedWords ?? 0;
+        $('removed-stat').textContent = stats.removedWords ?? 0;
+        $('changes-stat').textContent = stats.changes ?? 0;
+        $('similarity-stat').textContent = `${stats.similarity ?? 100}%`;
+      }
+
+      function createWorker() {
+        try {
+          const source = $('worker-source').textContent;
+          const blob = new Blob([source], { type: 'application/javascript' });
+          worker = new Worker(URL.createObjectURL(blob));
+          workerHealthy = true;
+
+          worker.onmessage = event => {
+            const data = event.data || {};
+            if (data.id < requestId || data.id <= latestAppliedId) return;
+            if (data.error) {
+              workerHealthy = false;
+              setStatus('error', 'تعذر تشغيل محرك المقارنة');
+              showToast('تعذر تشغيل محرك المقارنة في هذا المتصفح. أعد فتح الملف أو جرّب Chrome/Edge حديث.');
+              return;
             }
+            latestAppliedId = data.id;
+            applyResult(data);
+          };
+
+          worker.onerror = () => {
+            workerHealthy = false;
+            setStatus('error', 'محرك المقارنة غير متاح');
+          };
+        } catch (error) {
+          workerHealthy = false;
+          setStatus('error', 'محرك المقارنة غير متاح');
+        }
+      }
+
+      function applyResult(data) {
+        const text1 = original.value;
+        const text2 = modified.value;
+
+        originalHighlight.innerHTML = renderMarkedText(text1, data.status1, 'original');
+        modifiedHighlight.innerHTML = renderMarkedText(text2, data.status2, 'modified');
+        syncBackdrop(original, originalHighlight);
+        syncBackdrop(modified, modifiedHighlight);
+        updateStats(data.stats);
+
+        if (data.stats && data.stats.coarse) {
+          setStatus('waiting', 'مقارنة سريعة لنص كبير جداً');
+        } else if (liveToggle.checked) {
+          setStatus('live', '● Live متزامن');
+        } else {
+          setStatus('waiting', 'Live متوقف');
+        }
+      }
+
+      function compareNow() {
+        clearTimeout(compareTimer);
+        renderNeutral(original, originalHighlight);
+        renderNeutral(modified, modifiedHighlight);
+
+        if (!original.value && !modified.value) {
+          updateStats({ addedWords:0, removedWords:0, changes:0, similarity:100 });
+          setStatus(liveToggle.checked ? 'live' : 'waiting', liveToggle.checked ? '● Live جاهز' : 'Live متوقف');
+          return;
         }
 
-    </script>
+        if (!workerHealthy || !worker) {
+          // Recreate once in case a browser suspended/terminated the worker.
+          createWorker();
+        }
+        if (!workerHealthy || !worker) {
+          setStatus('error', 'محرك المقارنة غير متاح');
+          return;
+        }
+
+        const id = ++requestId;
+        setStatus('waiting', 'جارٍ التحديث…');
+        worker.postMessage({
+          id,
+          text1: original.value,
+          text2: modified.value,
+          ignoredChars: Array.from(ignoredChars)
+        });
+      }
+
+      function scheduleCompare(immediate = false) {
+        if (!liveToggle.checked && !immediate) {
+          renderNeutral(original, originalHighlight);
+          renderNeutral(modified, modifiedHighlight);
+          setStatus('waiting', 'Live متوقف — اضغط تحديث');
+          return;
+        }
+        clearTimeout(compareTimer);
+        const total = original.value.length + modified.value.length;
+        const delay = immediate ? 0 : total > 200000 ? 320 : total > 70000 ? 220 : 90;
+        compareTimer = setTimeout(compareNow, delay);
+      }
+
+      function syncBackdrop(editor, highlight) {
+        highlight.scrollTop = editor.scrollTop;
+        highlight.scrollLeft = editor.scrollLeft;
+      }
+
+      function syncPartnerScroll(source, partner) {
+        if (syncLock || window.innerWidth <= 860) return;
+        syncLock = true;
+        const sourceMax = Math.max(1, source.scrollHeight - source.clientHeight);
+        const partnerMax = Math.max(0, partner.scrollHeight - partner.clientHeight);
+        partner.scrollTop = (source.scrollTop / sourceMax) * partnerMax;
+        const sourceXMax = Math.max(1, source.scrollWidth - source.clientWidth);
+        const partnerXMax = Math.max(0, partner.scrollWidth - partner.clientWidth);
+        partner.scrollLeft = (source.scrollLeft / sourceXMax) * partnerXMax;
+        syncBackdrop(partner, partner === original ? originalHighlight : modifiedHighlight);
+        requestAnimationFrame(() => { syncLock = false; });
+      }
+
+      function onEditorScroll(editor, highlight, partner) {
+        syncBackdrop(editor, highlight);
+        syncPartnerScroll(editor, partner);
+      }
+
+      function getSelectedText(editor) {
+        const start = editor.selectionStart ?? 0;
+        const end = editor.selectionEnd ?? start;
+        if (end > start) return editor.value.slice(start, end);
+        if (start < editor.value.length) return editor.value.slice(start, start + 1);
+        if (start > 0) return editor.value.slice(start - 1, start);
+        return '';
+      }
+
+      function printableChar(ch) {
+        if (ch === ' ') return 'SPACE';
+        if (ch === '\n') return '↵ LF';
+        if (ch === '\r') return 'CR';
+        if (ch === '\t') return '⇥ TAB';
+        if (ch === '\u200B') return 'ZWSP';
+        if (ch === '\u200C') return 'ZWNJ';
+        if (ch === '\u200D') return 'ZWJ';
+        if (ch === '\u00A0') return 'NBSP';
+        if (ch === '\u00AD') return 'SHY';
+        if (/^\s$/u.test(ch)) return `WS U+${ch.codePointAt(0).toString(16).toUpperCase().padStart(4,'0')}`;
+        return ch;
+      }
+
+      function codePointLabel(ch) {
+        const cp = ch.codePointAt(0);
+        return cp === undefined ? '' : `U+${cp.toString(16).toUpperCase().padStart(4, '0')}`;
+      }
+
+      function addIgnoredFromSelection(editor = lastFocusedEditor) {
+        const selected = getSelectedText(editor);
+        if (!selected) {
+          showToast('حدد حرفاً داخل أحد النصين أولاً.');
+          editor.focus();
+          return;
+        }
+        let added = 0;
+        for (const ch of Array.from(selected)) {
+          if (!ignoredChars.has(ch)) {
+            ignoredChars.add(ch);
+            added++;
+          }
+        }
+        if (!added) {
+          showToast('الحرف المحدد موجود بالفعل في قائمة التجاهل.');
+          return;
+        }
+        saveIgnoredChars();
+        renderIgnoreChips();
+        scheduleCompare(true);
+        showToast(`تم تجاهل ${added === 1 ? 'الحرف المحدد' : `${added} أحرف`} في النصين بالكامل.`);
+      }
+
+      function renderIgnoreChips() {
+        const box = $('ignore-chips');
+        box.innerHTML = '';
+        for (const ch of ignoredChars) {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'ignore-chip';
+          button.title = `${printableChar(ch)} — ${codePointLabel(ch)}. اضغط لإلغاء تجاهله.`;
+          const label = document.createElement('span');
+          label.textContent = `${printableChar(ch)} ${codePointLabel(ch)}`;
+          const close = document.createElement('b');
+          close.textContent = '×';
+          button.append(label, close);
+          button.addEventListener('click', () => {
+            ignoredChars.delete(ch);
+            saveIgnoredChars();
+            renderIgnoreChips();
+            scheduleCompare(true);
+          });
+          box.appendChild(button);
+        }
+        $('clear-ignore-btn').hidden = ignoredChars.size === 0;
+      }
+
+      function clearTexts() {
+        original.value = '';
+        modified.value = '';
+        renderNeutral(original, originalHighlight);
+        renderNeutral(modified, modifiedHighlight);
+        updateStats({ addedWords:0, removedWords:0, changes:0, similarity:100 });
+        setStatus(liveToggle.checked ? 'live' : 'waiting', liveToggle.checked ? '● Live جاهز' : 'Live متوقف');
+        original.focus();
+      }
+
+      function toggleTheme() {
+        const root = document.documentElement;
+        const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
+        root.dataset.theme = next;
+        try { localStorage.setItem('elbakry-diff-theme-v2', next); } catch (_) {}
+      }
+
+      function loadTheme() {
+        try {
+          const saved = localStorage.getItem('elbakry-diff-theme-v2');
+          if (saved === 'light' || saved === 'dark') document.documentElement.dataset.theme = saved;
+        } catch (_) {}
+      }
+
+      [original, modified].forEach(editor => {
+        editor.addEventListener('focus', () => { lastFocusedEditor = editor; });
+        editor.addEventListener('click', () => { lastFocusedEditor = editor; });
+        editor.addEventListener('keyup', () => { lastFocusedEditor = editor; });
+        editor.addEventListener('input', () => {
+          renderNeutral(editor, editor === original ? originalHighlight : modifiedHighlight);
+          scheduleCompare(false);
+        });
+        editor.addEventListener('paste', () => setTimeout(() => scheduleCompare(true), 0));
+      });
+
+      original.addEventListener('scroll', () => onEditorScroll(original, originalHighlight, modified), { passive:true });
+      modified.addEventListener('scroll', () => onEditorScroll(modified, modifiedHighlight, original), { passive:true });
+
+      $('ignore-selection-btn').addEventListener('click', () => addIgnoredFromSelection(lastFocusedEditor));
+      document.querySelectorAll('.ignore-here').forEach(button => {
+        button.addEventListener('mousedown', event => event.preventDefault()); // preserve textarea selection
+        button.addEventListener('click', () => {
+          const side = button.closest('.editor-card').dataset.side;
+          addIgnoredFromSelection(side === 'original' ? original : modified);
+        });
+      });
+
+      $('clear-ignore-btn').addEventListener('click', () => {
+        ignoredChars.clear();
+        saveIgnoredChars();
+        renderIgnoreChips();
+        scheduleCompare(true);
+        showToast('تم إلغاء قائمة التجاهل.');
+      });
+
+      $('compare-btn').addEventListener('click', () => scheduleCompare(true));
+      $('theme-btn').addEventListener('click', toggleTheme);
+      $('clear-btn').addEventListener('click', clearTexts);
+      liveToggle.addEventListener('change', () => {
+        if (liveToggle.checked) scheduleCompare(true);
+        else setStatus('waiting', 'Live متوقف — اضغط تحديث');
+      });
+
+      // Useful shortcuts: Ctrl/Cmd+Enter refreshes; Alt+I ignores current selection.
+      document.addEventListener('keydown', event => {
+        if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+          event.preventDefault();
+          scheduleCompare(true);
+        }
+        if (event.altKey && event.key.toLowerCase() === 'i') {
+          event.preventDefault();
+          addIgnoredFromSelection(lastFocusedEditor);
+        }
+      });
+
+      loadTheme();
+      renderIgnoreChips();
+      createWorker();
+      renderNeutral(original, originalHighlight);
+      renderNeutral(modified, modifiedHighlight);
+      scheduleCompare(true);
+    })();
+  </script>
 </body>
 </html>
